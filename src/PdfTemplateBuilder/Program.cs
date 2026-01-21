@@ -234,16 +234,25 @@ namespace PdfTemplateBuilder
                     formAnnotation.SetBorderColor(ColorConstants.BLACK);
                 }
 
-                // Respect visibility: keep field in AcroForm but hide its widget if requested
-                if (!fieldSpec.Visible)
+                // Respect visibility: keep field in AcroForm but set annotation flags based on spec
+                var fieldVis = fieldSpec.Visible;
+                var widgetObj = field.GetWidgets()[0].GetPdfObject();
+                var existingNum = widgetObj.GetAsNumber(PdfName.F);
+                var existingFlags = existingNum == null ? 0 : existingNum.IntValue();
+                var flagToAdd = 0;
+                if (fieldVis.Flag != AnnotationVisibility.Visible)
                 {
-                    var widget = field.GetWidgets()[0];
-                    var obj = widget.GetPdfObject();
-                    var existing = obj.GetAsNumber(PdfName.F);
-                    var flags = existing == null ? 0 : existing.IntValue();
-                    // 2 == Hidden (annotation flag). Combine bits if needed.
-                    flags |= 2;
-                    obj.Put(PdfName.F, new PdfNumber(flags));
+                    flagToAdd = MapVisibilityFlag(fieldVis.Flag);
+                }
+                else if (fieldVis.Render.HasValue && !fieldVis.Render.Value)
+                {
+                    // boolean false historically hides widget
+                    flagToAdd = MapVisibilityFlag(AnnotationVisibility.Hidden);
+                }
+
+                if (flagToAdd != 0)
+                {
+                    widgetObj.Put(PdfName.F, new PdfNumber(existingFlags | flagToAdd));
                 }
 
                 form.AddField(field, page);
@@ -290,15 +299,24 @@ namespace PdfTemplateBuilder
                     field.SetValue("Yes");
                 }
 
-                // Respect Checkbox visibility: keep field but hide widget if requested
-                if (!checkbox.Visible)
+                // Respect Checkbox visibility: keep field but set annotation flags based on spec
+                var cbVis = checkbox.Visible;
+                var cbWidgetObj = field.GetWidgets()[0].GetPdfObject();
+                var cbExisting = cbWidgetObj.GetAsNumber(PdfName.F);
+                var cbExistingFlags = cbExisting == null ? 0 : cbExisting.IntValue();
+                var cbFlagToAdd = 0;
+                if (cbVis.Flag != AnnotationVisibility.Visible)
                 {
-                    var widget = field.GetWidgets()[0];
-                    var obj = widget.GetPdfObject();
-                    var existing = obj.GetAsNumber(PdfName.F);
-                    var flags = existing == null ? 0 : existing.IntValue();
-                    flags |= 2; // Hidden
-                    obj.Put(PdfName.F, new PdfNumber(flags));
+                    cbFlagToAdd = MapVisibilityFlag(cbVis.Flag);
+                }
+                else if (cbVis.Render.HasValue && !cbVis.Render.Value)
+                {
+                    cbFlagToAdd = MapVisibilityFlag(AnnotationVisibility.Hidden);
+                }
+
+                if (cbFlagToAdd != 0)
+                {
+                    cbWidgetObj.Put(PdfName.F, new PdfNumber(cbExistingFlags | cbFlagToAdd));
                 }
 
                 form.AddField(field, page);
@@ -448,8 +466,8 @@ namespace PdfTemplateBuilder
 
             foreach (var table in spec.Tables)
             {
-                // Skip tables explicitly marked invisible
-                if (!table.Visible)
+                // If the table's Visible Render is explicitly false, skip the table (backwards-compatible behavior)
+                if (table.Visible.Render.HasValue && !table.Visible.Render.Value)
                 {
                     continue;
                 }
@@ -473,7 +491,7 @@ namespace PdfTemplateBuilder
             {
                 availableWidth = 0;
             }
-            var visibleColumns = spec.Columns.Where(c => c.Visible).ToList();
+            var visibleColumns = spec.Columns.Where(c => !(c.Visible.Render.HasValue && !c.Visible.Render.Value)).ToList();
             if (visibleColumns.Count == 0)
             {
                 // Nothing to draw
@@ -550,7 +568,32 @@ namespace PdfTemplateBuilder
                             _ => TextAlignment.LEFT
                         });
 
+                        // Determine effective annotation flag: column overrides table
+                        var colFlag = column.Visible.Flag;
+                        var tableFlag = spec.Visible.Flag;
+                        var effectiveFlag = colFlag != AnnotationVisibility.Visible ? colFlag : tableFlag;
+
                         form.AddField(field, page);
+
+                        if (effectiveFlag != AnnotationVisibility.Visible || (column.Visible.Render.HasValue && !column.Visible.Render.Value))
+                        {
+                            var widget = field.GetWidgets()[0];
+                            var obj = widget.GetPdfObject();
+                            var existing = obj.GetAsNumber(PdfName.F);
+                            var flags = existing == null ? 0 : existing.IntValue();
+                            var flagVal = MapVisibilityFlag(effectiveFlag);
+
+                            if (column.Visible.Render.HasValue && !column.Visible.Render.Value && flagVal == 0)
+                            {
+                                flagVal = MapVisibilityFlag(AnnotationVisibility.Hidden);
+                            }
+
+                            if (flagVal != 0)
+                            {
+                                obj.Put(PdfName.F, new PdfNumber(flags | flagVal));
+                            }
+                        }
+
                         currentX += width;
                     }
 
@@ -562,16 +605,16 @@ namespace PdfTemplateBuilder
             layoutContext.Register(spec.Name, tableAnchorRect);
         }
 
-        private static void DrawTableHeader(TableSpec spec, PdfDocument pdf, PdfPage page, PdfCanvas canvas, PdfFont font, string unit, float x, float y, float headerHeight, IReadOnlyList<float> columnWidths, float headerScale)
+        private static void DrawTableHeader(TableSpec spec, PdfDocument pdf, PdfPage page, PdfCanvas canvas, PdfFont font, string unit, float x, float y, float headerHeight, IReadOnlyList<float> columnWidths, float headerScale, IReadOnlyList<TableColumnSpec> columns)
         {
             var pageSize = page.GetPageSize();
             using var layoutCanvas = new iText.Layout.Canvas(canvas, pageSize);
             var currentX = x;
             var baseFontSize = spec.HeaderFontSize <= 0 ? 9 : spec.HeaderFontSize;
 
-            for (var colIndex = 0; colIndex < spec.Columns.Count; colIndex++)
+            for (var colIndex = 0; colIndex < columns.Count; colIndex++)
             {
-                var column = spec.Columns[colIndex];
+                var column = columns[colIndex];
                 var width = columnWidths[colIndex];
                 var headerAlign = (column.HeaderAlign ?? spec.HeaderAlign ?? column.Align ?? "left").ToLowerInvariant();
                 var textAlignment = headerAlign switch
@@ -772,11 +815,11 @@ namespace PdfTemplateBuilder
             canvas.RestoreState();
         }
 
-        private static ColumnWidthResult ResolveColumnWidths(TableSpec spec, string unit, float availableWidth)
+        private static ColumnWidthResult ResolveColumnWidths(TableSpec spec, string unit, float availableWidth, IReadOnlyList<TableColumnSpec> columns)
         {
-            var widths = new List<float>(spec.Columns.Count);
+            var widths = new List<float>(columns.Count);
             var total = 0f;
-            foreach (var column in spec.Columns)
+            foreach (var column in columns)
             {
                 var width = UnitConverter.ToPoints(column.Width, unit);
                 widths.Add(width);
@@ -795,6 +838,12 @@ namespace PdfTemplateBuilder
             }
 
             return new ColumnWidthResult(widths, scale);
+        }
+
+        private static int MapVisibilityFlag(AnnotationVisibility v)
+        {
+            // AnnotationVisibility now matches PDF bits; cast directly to int to support combined flags
+            return (int)v;
         }
 
         private static void ClipAndDrawHeaderText(iText.Layout.Canvas canvas, Rectangle cellRect, PdfFont font, string text, float fontSize, TextAlignment alignment, bool wrap)

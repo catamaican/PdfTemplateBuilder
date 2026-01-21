@@ -162,6 +162,73 @@ Notes:
 }
 ```
 
+### Visibility controls
+Fields, checkboxes, tables and table columns support visibility options to keep AcroForm fields present in the PDF while hiding their on-page widget annotation.
+
+- `visible` accepts `true|false` or string values `"Invisible"|"Hidden"|"NoView"`.
+  - boolean `true` (default) — visible, widgets not flagged.
+  - boolean `false` — behavior depends on context for backwards-compatibility: for `field`/`checkbox` a `false` will hide the widget (field remains in AcroForm); for `table`/`column` a `false` will omit the table/column from rendering.
+  - string `"Hidden"|"Invisible"|"NoView"` or array ` ["Hidden","NoView"]` — render the element (table/column/header/etc.) and set the corresponding annotation flag(s) on the widget(s). Example semantics:
+    - `"Hidden"` sets the Hidden annotation bit on widgets
+    - `"Invisible"` sets the Invisible annotation bit on widgets
+    - `"NoView"` sets the NoView annotation bit on widgets
+    - Combined values like `"Hidden|NoView"` or `["Hidden","NoView"]` set multiple annotation bits (ORed)
+
+- `Table.RowsVisible` (bool, default `true`) — when `false` the table header will be drawn but no data rows will be generated.
+
+Notes:
+- When a string flag is used (e.g. `"Hidden"`) the element is still drawn (lines, header, etc.) but the underlying widgets are flagged so they won't be shown/printed according to viewer behavior.
+- This preserves backwards compatibility: using `"visible": false` on tables/columns continues to omit them completely; using `"visible": false` on fields/checkboxes hides the widget but keeps the field in the AcroForm.
+
+Implementation note: the renderer hides widgets by setting the widget annotation `F` flags (the Hidden bit is set). The underlying form field remains present in the AcroForm so you can set or read its value with normal iText APIs or other tools.
+
+Examples:
+- Hide a text field (field remains in AcroForm but not visible):
+```
+{
+  "name": "institutie_publica",
+  "x": 50,
+  "y": 17,
+  "width": "auto",
+  "height": 7,
+  "fontSize": 9,
+  "borderWidth": 0.5,
+  "align": "left",
+  "visible": false
+}
+```
+
+- Hide a checkbox widget:
+```
+{
+  "name": "angajament_legal",
+  "x": 150,
+  "y": 50,
+  "size": 4,
+  "borderWidth": 0.5,
+  "checked": false,
+  "checkType": "check",
+  "visible": false
+}
+```
+
+- Table-level and column-level examples (hide rows and a column):
+```
+{
+  "name": "valoaAng",
+  "below": "valoare_angajamente",
+  "x": 25,
+  "rowHeight": 7,
+  "headerHeight": 8,
+  "sampleRowCount": 3,
+  "rowsVisible": false,
+  "columns": [
+    { "name": "element", "header": "Element", "width": 35, "align": "left" },
+    { "name": "cod_ssi", "header": "Cod SSI", "width": 15, "align": "left", "visible": false }
+  ]
+}
+```
+
 ### Signature field
 ```
 {

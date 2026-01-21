@@ -50,8 +50,11 @@
           "height": 7,
           "fontSize": 9,
           "borderWidth": 0.5,
-          "align": "left"
+          "align": "left",
+          "visible": "Hidden"
         },
+
+
         {
           "name": "cod_fiscal",
           "x": 60,
@@ -129,7 +132,8 @@
           "size": 4,
           "borderWidth": 0.5,
           "checked": false,
-          "checkType": "check"
+          "checkType": "check",
+          "visible": "Hidden"
         }
       ],
 
@@ -149,7 +153,7 @@
           "columns": [
             { "name": "element", "header": "Element de fundamentare", "width": 35, "align": "left" },
             { "name": "program", "header": "Program", "width": 25, "align": "left" },
-            { "name": "cod_ssi", "header": "Cod SSI", "width": 15, "align": "left" },
+            { "name": "cod_ssi", "header": "Cod SSI", "width": 15, "align": "left", "visible": ["Hidden","NoView"] },
             { "name": "parametri", "header": "Parametri de fundamentare", "width": 35, "align": "left" },
             { "name": "valoare_initiala", "header": "Valoare inițială (lei)", "width": 25, "align": "center", "headerWrap": "true" },
             { "name": "diferenta", "header": "Diferențe +/- (lei)", "width": 20, "align": "right", "headerWrap": "true" },
@@ -168,6 +172,7 @@
           "sampleRowCount": 3,
           "rowNamePrefix": "valoare_row_",
 		  "headerAutoFit": false,
+          "rowsVisible": false,
           "columns": [
             { "name": "element", "header": "Element de fundamentare", "width": 35, "align": "left" },
             { "name": "program", "header": "Program", "width": 25, "align": "left" },
