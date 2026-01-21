@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        dotnet-version: [9.0]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Restore
+        run: dotnet restore PdfTemplateBuilder.sln
+      - name: Build
+        run: dotnet build PdfTemplateBuilder.sln -c Release --no-restore
+      - name: Pack
+        run: |
+          dotnet pack src/PdfTemplateBuilder.csproj -c Release -o ./artifacts --no-build
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdftemplatebuilder-package
+          path: ./artifacts

@@ -1,0 +1,34 @@
+/bin/
+/obj/
+/.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.nupkg
+# Rider
+.idea/
+# Visual Studio Code
+.vscode/
+# dotnet tool cache
+.tools/
+# local publish
+publish/
+# temp
+*.tmp
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+# NuGet packages
+**/packages/*
+# Logs
+*.log
+# Build results
+artifacts/
+# Coverage
+coverage*/
+
+# keep template-spec in repo but ignore generated pdf output
+src/bin/Debug/**/document-template-*.pdf

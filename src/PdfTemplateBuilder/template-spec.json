@@ -1,0 +1,241 @@
+{
+  "unit": "mm",
+  "origin": "top-left",
+  "fonts": {
+    "regular": "C:/Windows/Fonts/segoeui.ttf",
+    "bold": "C:/Windows/Fonts/segoeuib.ttf"
+  },
+  "page": {
+    "size": "A4",
+    "margins": { "left": 10, "right": 10, "top": 10, "bottom": 10 }
+  },
+
+  "specExtensions": {
+    "width": {
+      "description": "Accepts a number (units in 'unit' specified above) or the string 'auto'. When 'auto' the element expands to fill the remaining horizontal space inside its container (page/subform), respecting container width, x and right margin.",
+      "example": "'width': 'auto'"
+    }
+  },
+
+  "subforms": [
+    {
+      "name": "main_form",
+      "x": 0,
+      "y": 0,
+      "borderWidth": 1,
+      "borderColor": "#888aaa",
+      "borderStyle": "solid",
+
+      "staticTexts": [
+        { "value": "DOCUMENT DE FUNDAMENTARE", "x": 70, "y": 35, "fontSize": 11, "bold": true, "width": "auto" },
+
+        { "value": "Instituția publică:", "x": 0, "y": 10, "fontSize": 9 },
+        { "value": "Cod de identificare fiscală:", "x": 15, "y": 28, "fontSize": 9 },
+
+        { "value": "Secțiunea A: Obiectul documentului de fundamentare", "x": 15, "y": 55, "fontSize": 9, "bold": true },
+
+        { "value": "1. Compartiment de specialitate:", "x": 15, "y": 63, "fontSize": 9 },
+        { "value": "2. Descriere pe scurt a obiectului documentului de fundamentare / motivul revizuirii:", "x": 15, "y": 75, "fontSize": 9 },
+        { "value": "3. Descriere pe larg a stării de fapt și de drept:", "x": 15, "y": 90, "fontSize": 9 },
+
+        { "value": "4. Valoarea angajamentelor legale:", "x": 15, "y": 165, "fontSize": 9 }
+      ],
+
+      "fields": [
+        {
+          "name": "institutie_publica",
+          "x": 50,
+          "y": 17,
+          "width": "auto",
+          "height": 7,
+          "fontSize": 9,
+          "borderWidth": 0.5,
+          "align": "left"
+        },
+        {
+          "name": "cod_fiscal",
+          "x": 60,
+          "y": 25,
+          "width": 40,
+          "height": 6,
+          "fontSize": 9,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "nr_unic_inregistrare",
+          "x": 50,
+          "y": 42,
+          "width": 60,
+          "height": 6,
+          "fontSize": 9,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "revizuire",
+          "x": 125,
+          "y": 42,
+          "width": 15,
+          "height": 6,
+          "fontSize": 9,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "data_revizuire",
+          "x": 145,
+          "y": 42,
+          "width": 30,
+          "height": 6,
+          "fontSize": 9,
+          "borderWidth": 0.5,
+          "dataType": "date",
+          "format": "dd.MM.yyyy"
+        },
+
+        {
+          "name": "compartiment_specialitate",
+          "x": 15,
+          "y": 66,
+          "width": "auto",
+          "height": 7,
+          "fontSize": 9,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "descriere_scurta",
+          "x": 15,
+          "y": 78,
+          "width": "auto",
+          "height": 10,
+          "fontSize": 9,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "descriere_lunga",
+          "x": 15,
+          "y": 93,
+          "width": 180,
+          "height": 35,
+          "fontSize": 9,
+          "borderWidth": 0.5,
+          "multiline": true
+        }
+      ],
+
+      "checkboxes": [
+        {
+          "name": "angajament_legal",
+          "x": 150,
+          "y": 50,
+          "size": 4,
+          "borderWidth": 0.5,
+          "checked": false,
+          "checkType": "check"
+        }
+      ],
+
+      "tables": [
+        {
+          "name": "valoare_angajamente",
+          "x": 15,
+          "yStart": 175,
+          "rowHeight": 7,
+          "headerHeight": 8,
+          "bottomLimit": 20,
+          "headerFontSize": 8,
+          "bodyFontSize": 8,
+          "sampleRowCount": 3,
+          "rowNamePrefix": "valoare_row_",
+		  "headerAutoFit": false,
+          "columns": [
+            { "name": "element", "header": "Element de fundamentare", "width": 35, "align": "left" },
+            { "name": "program", "header": "Program", "width": 25, "align": "left" },
+            { "name": "cod_ssi", "header": "Cod SSI", "width": 15, "align": "left" },
+            { "name": "parametri", "header": "Parametri de fundamentare", "width": 35, "align": "left" },
+            { "name": "valoare_initiala", "header": "Valoare inițială (lei)", "width": 25, "align": "center", "headerWrap": "true" },
+            { "name": "diferenta", "header": "Diferențe +/- (lei)", "width": 20, "align": "right", "headerWrap": "true" },
+            { "name": "valoare_actualizata", "header": "Valoaresss actualizată (lei)", "headerWrap": "true", "width": 30, "align": "right" }
+          ]
+        },
+		{
+          "name": "valoaAng",
+		  "below": "valoare_angajamente",
+          "x": 25,
+          "rowHeight": 7,
+          "headerHeight": 8,
+          "bottomLimit": 20,
+          "headerFontSize": 8,
+          "bodyFontSize": 8,
+          "sampleRowCount": 3,
+          "rowNamePrefix": "valoare_row_",
+		  "headerAutoFit": false,
+          "columns": [
+            { "name": "element", "header": "Element de fundamentare", "width": 35, "align": "left" },
+            { "name": "program", "header": "Program", "width": 25, "align": "left" },
+            { "name": "cod_ssi", "header": "Cod SSI", "width": 15, "align": "left" },
+            { "name": "valoare_actualizata", "header": "Valoaresss actualizată (lei)", "headerWrap": "true", "width": 30, "align": "right" }
+          ]
+        }
+      ],
+
+      "signatures": [
+        {
+          "name": "Sig_S1",
+          "x": 15,
+          "below": "valoaAng",
+          "gap": 8,
+          "y": 0,
+          "width": 70,
+          "height": 12,
+          "borderWidth": 0.5
+        },
+        {
+          "name": "Sig_S2",
+          "x": 120,
+          "below": "valoaAng",
+          "gap": 8,
+          "y": 0,
+          "width": 70,
+          "height": 12,
+          "borderWidth": 0.5
+        }
+      ]
+
+    },
+
+	{
+      "name": "subform3",
+      "x": 0,
+      "width": 190,
+		"below": "main_form",
+      "gap": 5,
+      "borderWidth": 0.6,
+      "borderColor": "#6E6E6E",
+      "borderStyle": "dashed",
+
+	"fields": [
+	{
+          "name": "compartiment_specialitate",
+          "x": 15,
+          "width": "auto",
+          "height": 15,
+          "fontSize": 9,
+          "borderWidth": 0.5,
+	  "multiline": true
+        },
+		{
+          "name": "descriere_lunga",
+	  "below": "compartiment_specialitate",
+          "x": 15,
+          "width": "auto",
+          "height": 35,
+          "fontSize": 9,
+          "borderWidth": 0.5,
+          "multiline": true
+        }
+	]
+
+    }
+	
+	
+  ]
+}

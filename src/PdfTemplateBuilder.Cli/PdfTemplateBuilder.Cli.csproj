@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PdfTemplateBuilder\PdfTemplateBuilder.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\PdfTemplateBuilder\template-spec.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

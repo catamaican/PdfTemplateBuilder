@@ -1,0 +1,5 @@
+* text=auto
+*.cs diff=csharp
+*.md text
+LICENSE text
+README.md text
