@@ -32,3 +32,9 @@ coverage*/
 
 # keep template-spec in repo but ignore generated pdf output
 src/bin/Debug/**/document-template-*.pdf
+/src/PdfTemplateBuilder/obj
+/src/PdfTemplateBuilder/bin
+/src/PdfTemplateBuilder.Cli/obj
+/src/PdfTemplateBuilder.Cli/bin
+/tests/PdfTemplateBuilder.Tests/obj
+/tests/PdfTemplateBuilder.Tests/bin
