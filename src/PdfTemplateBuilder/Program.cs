@@ -195,65 +195,23 @@ namespace PdfTemplateBuilder
                     widthPoints,
                     heightPoints);
 
-                var field = new TextFormFieldBuilder(pdf, fieldSpec.Name ?? string.Empty)
-                    .SetWidgetRectangle(rect)
-                    .SetPage(page)
-                    .CreateText();
-                field.SetFont(font);
-                field.SetFontSize(fieldSpec.FontSize <= 0 ? 10 : fieldSpec.FontSize);
+                var fontSize = fieldSpec.FontSize <= 0 ? DefaultFieldFontSize : fieldSpec.FontSize;
                 var resolvedAlign = fieldSpec.Align;
                 if (string.IsNullOrWhiteSpace(resolvedAlign) && string.Equals(fieldSpec.DataType, "decimal", StringComparison.OrdinalIgnoreCase))
                 {
                     resolvedAlign = "right";
                 }
 
-                field.SetJustification(resolvedAlign switch
-                {
-                    "center" => TextAlignment.CENTER,
-                    "right" => TextAlignment.RIGHT,
-                    _ => TextAlignment.LEFT
-                });
-                if (fieldSpec.Multiline)
-                {
-                    field.SetMultiline(true);
-                }
-                if (!string.IsNullOrWhiteSpace(fieldSpec.Value))
-                {
-                    field.SetValue(fieldSpec.Value);
-                }
-                else if (fieldSpec.SampleValue)
-                {
-                    field.SetValue(GetSampleValue(fieldSpec));
-                }
+                var value = !string.IsNullOrWhiteSpace(fieldSpec.Value) ? fieldSpec.Value : (fieldSpec.SampleValue ? GetSampleValue(fieldSpec) : null);
+                var field = CreateTextField(pdf, fieldSpec.Name ?? string.Empty, rect, page, font, fontSize, resolvedAlign, fieldSpec.Multiline, value);
 
                 if (fieldSpec.BorderWidth > 0)
                 {
-                    var widget = field.GetWidgets()[0];
-                    var formAnnotation = PdfFormAnnotation.MakeFormAnnotation(widget.GetPdfObject(), pdf);
-                    formAnnotation.SetBorderWidth(fieldSpec.BorderWidth);
-                    formAnnotation.SetBorderColor(ColorConstants.BLACK);
+                    ApplyWidgetBorder(field, pdf, fieldSpec.BorderWidth);
                 }
 
-                // Respect visibility: keep field in AcroForm but set annotation flags based on spec
-                var fieldVis = fieldSpec.Visible;
-                var widgetObj = field.GetWidgets()[0].GetPdfObject();
-                var existingNum = widgetObj.GetAsNumber(PdfName.F);
-                var existingFlags = existingNum == null ? 0 : existingNum.IntValue();
-                var flagToAdd = 0;
-                if (fieldVis.Flag != AnnotationVisibility.Visible)
-                {
-                    flagToAdd = MapVisibilityFlag(fieldVis.Flag);
-                }
-                else if (fieldVis.Render.HasValue && !fieldVis.Render.Value)
-                {
-                    // boolean false historically hides widget
-                    flagToAdd = MapVisibilityFlag(AnnotationVisibility.Hidden);
-                }
-
-                if (flagToAdd != 0)
-                {
-                    widgetObj.Put(PdfName.F, new PdfNumber(existingFlags | flagToAdd));
-                }
+                // Respect visibility: keep field in AcroForm but set widget annotation flags based on spec
+                SetWidgetVisibility(field.GetWidgets()[0].GetPdfObject(), fieldSpec.Visible);
 
                 form.AddField(field, page);
                 layoutContext.Register(fieldSpec.Name, rect);
@@ -279,19 +237,11 @@ namespace PdfTemplateBuilder
                     sizePoints,
                     sizePoints);
 
-                var field = new CheckBoxFormFieldBuilder(pdf, checkbox.Name ?? string.Empty)
-                    .SetWidgetRectangle(rect)
-                    .SetPage(page)
-                    .CreateCheckBox();
-
-                field.SetCheckType(ParseCheckType(checkbox.CheckType));
+                var field = CreateCheckBoxField(pdf, checkbox.Name ?? string.Empty, rect, page, checkbox.CheckType);
 
                 if (checkbox.BorderWidth > 0)
                 {
-                    var widget = field.GetWidgets()[0];
-                    var formAnnotation = PdfFormAnnotation.MakeFormAnnotation(widget.GetPdfObject(), pdf);
-                    formAnnotation.SetBorderWidth(checkbox.BorderWidth);
-                    formAnnotation.SetBorderColor(ColorConstants.BLACK);
+                    ApplyWidgetBorder(field, pdf, checkbox.BorderWidth);
                 }
 
                 if (checkbox.Checked)
@@ -299,25 +249,8 @@ namespace PdfTemplateBuilder
                     field.SetValue("Yes");
                 }
 
-                // Respect Checkbox visibility: keep field but set annotation flags based on spec
-                var cbVis = checkbox.Visible;
-                var cbWidgetObj = field.GetWidgets()[0].GetPdfObject();
-                var cbExisting = cbWidgetObj.GetAsNumber(PdfName.F);
-                var cbExistingFlags = cbExisting == null ? 0 : cbExisting.IntValue();
-                var cbFlagToAdd = 0;
-                if (cbVis.Flag != AnnotationVisibility.Visible)
-                {
-                    cbFlagToAdd = MapVisibilityFlag(cbVis.Flag);
-                }
-                else if (cbVis.Render.HasValue && !cbVis.Render.Value)
-                {
-                    cbFlagToAdd = MapVisibilityFlag(AnnotationVisibility.Hidden);
-                }
-
-                if (cbFlagToAdd != 0)
-                {
-                    cbWidgetObj.Put(PdfName.F, new PdfNumber(cbExistingFlags | cbFlagToAdd));
-                }
+                // Respect Checkbox visibility: keep field but set widget annotation flags based on spec
+                SetWidgetVisibility(field.GetWidgets()[0].GetPdfObject(), checkbox.Visible);
 
                 form.AddField(field, page);
                 layoutContext.Register(checkbox.Name, rect);
@@ -375,12 +308,7 @@ namespace PdfTemplateBuilder
                 var resolvedY = ResolveY(firstSig.Below, firstSig.Gap, firstSig.Y, heightPoints, unit, originTopLeft, pageHeight, offsetY, layoutContext);
                 
                 // If any signature in the group needs a page break, do it once for all
-                if (resolvedY < minY)
-                {
-                    page = pdf.AddNewPage();
-                    canvas = new PdfCanvas(page);
-                    layoutContext.SetCurrentPage(pdf.GetPageNumber(page));
-                }
+                EnsureNewPageIfNeeded(pdf, ref page, ref canvas, layoutContext, resolvedY, minY);
                 
                 // Draw all signatures in the group on the current page
                 foreach (var signature in group)
@@ -389,10 +317,7 @@ namespace PdfTemplateBuilder
                     resolvedY = ResolveY(signature.Below, signature.Gap, signature.Y, heightPoints, unit, originTopLeft, pageHeight, offsetY, layoutContext);
                     
                     // After page break, recalculate from flow top
-                    if (resolvedY < minY)
-                    {
-                        resolvedY = flowTop - heightPoints;
-                    }
+                    EnsurePageHasSpace(pdf, ref page, ref canvas, layoutContext, ref resolvedY, heightPoints, minY, flowTop);
                     
                     var rect = new Rectangle(
                         UnitConverter.ToPoints(signature.X, unit) + offsetX,
@@ -407,10 +332,7 @@ namespace PdfTemplateBuilder
 
                     if (signature.BorderWidth > 0)
                     {
-                        var widget = field.GetWidgets()[0];
-                        var formAnnotation = PdfFormAnnotation.MakeFormAnnotation(widget.GetPdfObject(), pdf);
-                        formAnnotation.SetBorderWidth(signature.BorderWidth);
-                        formAnnotation.SetBorderColor(ColorConstants.BLACK);
+                        ApplyWidgetBorder(field, pdf, signature.BorderWidth);
                     }
 
                     form.AddField(field, page);
@@ -424,13 +346,7 @@ namespace PdfTemplateBuilder
             var heightPoints = UnitConverter.ToPoints(signature.Height, unit);
             var resolvedY = ResolveY(signature.Below, signature.Gap, signature.Y, heightPoints, unit, originTopLeft, pageHeight, offsetY, layoutContext);
             
-            if (resolvedY < minY)
-            {
-                page = pdf.AddNewPage();
-                canvas = new PdfCanvas(page);
-                layoutContext.SetCurrentPage(pdf.GetPageNumber(page));
-                resolvedY = flowTop - heightPoints;
-            }
+            EnsurePageHasSpace(pdf, ref page, ref canvas, layoutContext, ref resolvedY, heightPoints, minY, flowTop);
 
             var rect = new Rectangle(
                 UnitConverter.ToPoints(signature.X, unit) + offsetX,
@@ -491,7 +407,7 @@ namespace PdfTemplateBuilder
             {
                 availableWidth = 0;
             }
-            var visibleColumns = spec.Columns.Where(c => !(c.Visible.Render.HasValue && !c.Visible.Render.Value)).ToList();
+            var visibleColumns = spec.Columns.Where(c => !c.Visible.ShouldOmitLayout()).ToList();
             if (visibleColumns.Count == 0)
             {
                 // Nothing to draw
@@ -575,24 +491,9 @@ namespace PdfTemplateBuilder
 
                         form.AddField(field, page);
 
-                        if (effectiveFlag != AnnotationVisibility.Visible || (column.Visible.Render.HasValue && !column.Visible.Render.Value))
-                        {
-                            var widget = field.GetWidgets()[0];
-                            var obj = widget.GetPdfObject();
-                            var existing = obj.GetAsNumber(PdfName.F);
-                            var flags = existing == null ? 0 : existing.IntValue();
-                            var flagVal = MapVisibilityFlag(effectiveFlag);
-
-                            if (column.Visible.Render.HasValue && !column.Visible.Render.Value && flagVal == 0)
-                            {
-                                flagVal = MapVisibilityFlag(AnnotationVisibility.Hidden);
-                            }
-
-                            if (flagVal != 0)
-                            {
-                                obj.Put(PdfName.F, new PdfNumber(flags | flagVal));
-                            }
-                        }
+                        // Apply effective visibility for this cell (column may override table-level flags)
+                        var effectiveVis = new VisibilitySpec { Render = column.Visible.Render, Flag = effectiveFlag };
+                        SetWidgetVisibility(field.GetWidgets()[0].GetPdfObject(), effectiveVis);
 
                         currentX += width;
                     }
@@ -840,10 +741,114 @@ namespace PdfTemplateBuilder
             return new ColumnWidthResult(widths, scale);
         }
 
+        private static void ApplyWidgetBorder(iText.Forms.Fields.PdfFormField field, PdfDocument pdf, float borderWidth)
+        {
+            if (borderWidth <= 0) return;
+            var widget = field.GetWidgets()[0];
+            var formAnnotation = PdfFormAnnotation.MakeFormAnnotation(widget.GetPdfObject(), pdf);
+            formAnnotation.SetBorderWidth(borderWidth);
+            formAnnotation.SetBorderColor(ColorConstants.BLACK);
+        }
+
+        private static void SetWidgetVisibility(iText.Kernel.Pdf.PdfDictionary widgetObj, VisibilitySpec vis)
+        {
+            if (widgetObj == null) return;
+            var existingNum = widgetObj.GetAsNumber(PdfName.F);
+            var existingFlags = existingNum == null ? 0 : existingNum.IntValue();
+
+            var flagToAdd = 0;
+            if (vis.Flag != AnnotationVisibility.Visible)
+            {
+                flagToAdd = MapVisibilityFlag(vis.Flag);
+            }
+            else if (vis.Render.HasValue && !vis.Render.Value)
+            {
+                // boolean false historically hides widget
+                flagToAdd = MapVisibilityFlag(AnnotationVisibility.Hidden);
+            }
+
+            if (flagToAdd != 0)
+            {
+                widgetObj.Put(PdfName.F, new PdfNumber(existingFlags | flagToAdd));
+            }
+        }
+
+        private const float DefaultFieldFontSize = 10f;
+        private const float DefaultBodyFontSize = 9f;
+
         private static int MapVisibilityFlag(AnnotationVisibility v)
         {
             // AnnotationVisibility now matches PDF bits; cast directly to int to support combined flags
             return (int)v;
+        }
+
+        /// <summary>
+        /// Ensure there is vertical space on the current page for an element at <paramref name="y"/> with the given <paramref name="height"/>.
+        /// If not, add a new page and update <paramref name="y"/> to the flowTop-based position.
+        /// </summary>
+        private static void EnsurePageHasSpace(PdfDocument pdf, ref PdfPage page, ref PdfCanvas canvas, LayoutContext layoutContext, ref float y, float height, float bottomLimit, float flowTop)
+        {
+            if (y < bottomLimit)
+            {
+                page = pdf.AddNewPage();
+                canvas = new PdfCanvas(page);
+                layoutContext.SetCurrentPage(pdf.GetPageNumber(page));
+                y = flowTop - height;
+            }
+        }
+
+        /// <summary>
+        /// Add a new page if the provided y is below the bottom limit. Unlike EnsurePageHasSpace this does not modify the provided Y value.
+        /// Useful when callers will recompute the element Y after a page break.
+        /// </summary>
+        private static void EnsureNewPageIfNeeded(PdfDocument pdf, ref PdfPage page, ref PdfCanvas canvas, LayoutContext layoutContext, float y, float bottomLimit)
+        {
+            if (y < bottomLimit)
+            {
+                page = pdf.AddNewPage();
+                canvas = new PdfCanvas(page);
+                layoutContext.SetCurrentPage(pdf.GetPageNumber(page));
+            }
+        }
+
+        private static PdfFormField CreateTextField(PdfDocument pdf, string name, Rectangle rect, PdfPage page, PdfFont font, float fontSize, string? align, bool multiline, string? value)
+        {
+            var field = new TextFormFieldBuilder(pdf, name ?? string.Empty)
+                .SetWidgetRectangle(rect)
+                .SetPage(page)
+                .CreateText();
+
+            field.SetFont(font);
+            field.SetFontSize(fontSize <= 0 ? DefaultFieldFontSize : fontSize);
+            field.SetJustification(align switch
+            {
+                "center" => TextAlignment.CENTER,
+                "right" => TextAlignment.RIGHT,
+                _ => TextAlignment.LEFT
+            });
+
+            if (multiline)
+            {
+                field.SetMultiline(true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                field.SetValue(value);
+            }
+
+            return field;
+        }
+
+        private static PdfFormField CreateCheckBoxField(PdfDocument pdf, string name, Rectangle rect, PdfPage page, string? checkType)
+        {
+            var field = new CheckBoxFormFieldBuilder(pdf, name ?? string.Empty)
+                .SetWidgetRectangle(rect)
+                .SetPage(page)
+                .CreateCheckBox();
+
+            field.SetCheckType(ParseCheckType(checkType));
+            return field;
         }
 
         private static void ClipAndDrawHeaderText(iText.Layout.Canvas canvas, Rectangle cellRect, PdfFont font, string text, float fontSize, TextAlignment alignment, bool wrap)

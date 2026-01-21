@@ -269,28 +269,47 @@ namespace PdfTemplateBuilder
         }
     }
 
-    // Visibility controls used to define widget annotation behavior and optional rendering
+    /// <summary>
+    /// Annotation visibility flags. These values are intentionally chosen to directly match the PDF annotation /F bits so
+    /// they can be cast to an <see cref="int"/> and combined with bitwise OR for multiple flags.
+    /// </summary>
     [System.Flags]
     public enum AnnotationVisibility
     {
+        /// <summary>Default: do not set any annotation visibility flag.</summary>
         Visible = 0,
-        Invisible = 1, // PDF annotation flag bit 1
-        Hidden = 2,    // PDF annotation flag bit 2
-        NoView = 32    // PDF annotation flag bit 32
+
+        /// <summary>Annotation is invisible (PDF flag bit 1).</summary>
+        Invisible = 1,
+
+        /// <summary>Annotation is hidden (PDF flag bit 2).</summary>
+        Hidden = 2,
+
+        /// <summary>Annotation is not viewable on screen (PDF flag bit 32).</summary>
+        NoView = 32
     }
 
+    /// <summary>
+    /// A small specification describing whether an element should be rendered and/or have annotation flags applied.
+    /// - <see cref="Render"/> = null means caller default (do not change rendering behavior), true/false explicitly control layout.
+    /// - <see cref="Flag"/> defines which PDF annotation flag(s) should be set on widget annotations. <see cref="AnnotationVisibility.Visible"/> means no flag will be applied.
+    /// </summary>
+    [JsonConverter(typeof(FlexibleVisibilityConverter))]
     public sealed class VisibilitySpec
     {
-        // If set, controls whether the element is rendered (table/column level). If null, rendering is determined by caller defaults.
+        /// <summary>If set, controls whether the element is rendered (table/column level). If null, rendering is determined by the caller.</summary>
         public bool? Render { get; init; }
 
-        // Which annotation flag(s) to apply to the widget. When set to Visible (0) no annotation flag is applied.
+        /// <summary>Which annotation flag(s) to apply to the widget. When set to <see cref="AnnotationVisibility.Visible"/>, no annotation flag is applied.</summary>
         public AnnotationVisibility Flag { get; init; } = AnnotationVisibility.Visible;
 
+        /// <summary>Factory returning default (visible) spec.</summary>
         public static VisibilitySpec DefaultVisible() => new VisibilitySpec { Render = null, Flag = AnnotationVisibility.Visible };
 
+        /// <summary>True when layout should be omitted for this element (explicitly Render=false).</summary>
         public bool ShouldOmitLayout() => Render.HasValue && !Render.Value;
 
+        /// <summary>True when the widget should be considered hidden (explicit flag or Render=false).</summary>
         public bool ShouldHideWidget() => Flag != AnnotationVisibility.Visible || (Render.HasValue && !Render.Value);
     }
 
