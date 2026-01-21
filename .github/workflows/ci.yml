@@ -29,5 +29,5 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pdftemplatebuilder-package
+          name: pdftemplatebuilder-package-${{ matrix.os }}
           path: ./artifacts
