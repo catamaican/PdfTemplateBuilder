@@ -43,7 +43,16 @@ namespace PdfTemplateBuilder
 			var writer = new PdfWriter(outputStream);
 			using var pdf = new PdfDocument(writer);
 			var pageSpec = spec.Page ?? new PageSpec();
-			var pageSize = UnitConverter.ResolvePageSize(pageSpec.Size ?? "A4");
+			var unit = spec.Unit ?? "mm"; // needs to be known if explicit dimensions are provided
+			PageSize pageSize;
+			if (pageSpec.Width.HasValue && pageSpec.Height.HasValue)
+			{
+				pageSize = UnitConverter.ResolvePageSize(pageSpec.Width.Value, pageSpec.Height.Value, unit);
+			}
+			else
+			{
+				pageSize = UnitConverter.ResolvePageSize(pageSpec.Size ?? "A4");
+			}
 			pdf.SetDefaultPageSize(pageSize);
 
 			var fontSpec = spec.Fonts ?? new FontSpec();
@@ -55,7 +64,6 @@ namespace PdfTemplateBuilder
 			var form = PdfAcroForm.GetAcroForm(pdf, true);
 			form.SetNeedAppearances(true);
 
-			var unit = spec.Unit ?? "mm";
 			var originTopLeft = string.Equals(spec.Origin ?? "top-left", "top-left", StringComparison.OrdinalIgnoreCase);
 			var pageHeight = page.GetPageSize().GetHeight();
 			var pageWidth = page.GetPageSize().GetWidth();

@@ -57,6 +57,20 @@ Top-level:
 }
 ```
 
+You can also specify a custom page size by providing explicit `width` and `height` values (numbers in the configured `unit`, default `mm`). When both `width` and `height` are present they take precedence over `size`.
+
+Example (A4 via explicit dimensions):
+```
+{
+  "page": {
+    "width": 210,
+    "height": 297,
+    "margins": { "left": 10, "right": 10, "top": 10, "bottom": 10 }
+  }
+}
+```
+
+
 ### Fonts (Unicode)
 ```
 {

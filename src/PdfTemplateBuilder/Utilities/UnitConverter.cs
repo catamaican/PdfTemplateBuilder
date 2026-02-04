@@ -34,5 +34,15 @@ namespace PdfTemplateBuilder.Utilities
 				_ => PageSize.A4,
 			};
 		}
+
+		/// <summary>
+		/// Create a page size from explicit width and height values specified in the given unit.
+		/// </summary>
+		public static PageSize ResolvePageSize(float width, float height, string unit)
+		{
+			var w = ToPoints(width, unit);
+			var h = ToPoints(height, unit);
+			return new PageSize(w, h);
+		}
 	}
 }

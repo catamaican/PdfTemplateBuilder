@@ -27,6 +27,10 @@ namespace PdfTemplateBuilder.Models
 	public sealed class PageSpec
 	{
 		public string? Size { get; set; }
+		// Optional explicit page dimensions in the configured unit (e.g. mm, cm, pt).
+		// When both Width and Height are provided they take precedence over `Size`.
+		public float? Width { get; set; }
+		public float? Height { get; set; }
 		public MarginSpec? Margins { get; set; }
 	}
 

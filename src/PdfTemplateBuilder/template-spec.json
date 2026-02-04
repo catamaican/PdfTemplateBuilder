@@ -14,6 +14,10 @@
     "width": {
       "description": "Accepts a number (units in 'unit' specified above) or the string 'auto'. When 'auto' the element expands to fill the remaining horizontal space inside its container (page/subform), respecting container width, x and right margin.",
       "example": "'width': 'auto'"
+    },
+    "pageSize": {
+      "description": "You can specify explicit page dimensions with numeric 'width' and 'height' values (units are those configured in the top-level 'unit' property, default 'mm'). When both are present they override 'size'.",
+      "example": "\"page\": { \"width\": 210, \"height\": 297 }"
     }
   },
 
